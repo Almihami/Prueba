@@ -1,0 +1,101 @@
+Cordial Saludo
+
+En este archivo encontrara el paso a paso para poder revisar la prueba propuesta
+
+GUÍA RÁPIDA – CÓMO LEVANTAR TODO
+
+
+0.  PRERREQUISITOS (instalados en tu máquina)
+    • Git 2.30+
+    • JDK 17 (o superior)
+    • Maven 3.9  (el wrapper `./mvnw` sirve igual)
+    • Docker Desktop (trae Docker Engine 24 y Compose v2)
+    • Postman (opcional, para probar APIs)
+
+
+1.  CLONAR EL PROYECTO
+
+$ git clone https://github.com/<TU-USUARIO>/banking-ms.git
+$ cd banking-ms
+
+────────────────────────────────────────────
+2.  COMPILAR LOS DOS MICROSERVICIOS
+────────────────────────────────────────────
+$ ./mvnw clean package -DskipTests
+
+   ► Esto genera:
+     persona-service/target/persona-service-*.jar
+     cuenta-service/target/cuenta-service-*.jar
+
+────────────────────────────────────────────
+3.  ARRANCAR TODA LA STACK CON DOCKER
+────────────────────────────────────────────
+$ docker compose up --build
+
+   ► Compose levanta 4 contenedores:
+     • postgres (DB)           puerto 5432
+     • rabbitmq (broker + UI)  puertos 5672 y 15672
+     • persona-service         puerto 8081
+     • cuenta-service          puerto 8082
+
+   ► Espera a ver en consola:
+       Tomcat started on port 8081
+       Tomcat started on port 8082
+
+────────────────────────────────────────────
+4.  VERIFICAR QUE TODO ESTÁ “UP”
+────────────────────────────────────────────
+$ curl -s http://localhost:8081/actuator/health   # → {"status":"UP"}
+$ curl -s http://localhost:8082/actuator/health   # → {"status":"UP"}
+
+Panel RabbitMQ:  http://localhost:15672   (user/pass: guest)
+
+────────────────────────────────────────────
+5.  PROBAR DESDE POSTMAN
+────────────────────────────────────────────
+1) Importa el archivo `Postman-Banking.json` (collección incluida).
+2) Ejecuta estos requests en orden:
+
+   1. POST  http://localhost:8081/api/clientes      (crea un cliente)
+   2. GET   http://localhost:8081/api/clientes      (lista clientes)
+   3. POST  http://localhost:8082/api/cuentas       (crea cuenta)
+   4. POST  http://localhost:8082/api/movimientos   (nuevo movimiento)
+   5. GET   http://localhost:8082/api/movimientos   (lista movimientos)
+
+   ► Cada vez que se crea un cliente se publica un mensaje
+     en la cola **cliente-creado** (míralo en la UI de RabbitMQ).
+
+────────────────────────────────────────────
+6.  OBTENER EL SCRIPT DEL ESQUEMA SQL
+────────────────────────────────────────────
+$ docker exec -t pruebadevsu-postgres-1 \
+      pg_dump -U user -s banking > BaseDatos.sql
+
+   ► El flag `-s` (schema-only) genera solo CREATE TABLE, PK, FK, etc.
+   ► El archivo `BaseDatos.sql` queda en tu carpeta actual.
+
+────────────────────────────────────────────
+7.  CÓMO DETENER Y LIMPIAR
+────────────────────────────────────────────
+• Solo detener (los datos de Postgres persisten):
+  $ docker compose down
+
+• Detener y borrar los volúmenes (DB “en limpio”):
+  $ docker compose down -v
+
+────────────────────────────────────────────
+8.  PREGUNTAS FRECUENTES
+────────────────────────────────────────────
+• “address already in use :8082”
+  ⇒ Cambia el puerto en `docker-compose.yml` o cierra la app que lo usa.
+
+• “SimpleMessageConverter only supports…”
+  ⇒ Ya incluimos Jackson2JsonMessageConverter; si ves el error,
+     asegúrate de tener `RabbitConfig` en el paquete escaneado por Spring.
+
+• Auth error en Postgres
+  ⇒ Verifica `POSTGRES_USER/PASSWORD` en `docker-compose.yml`
+     y en `application-prod.properties`.
+
+────────────────────────────────────────────
+¡Listo!  Con esto tienes la plataforma corriendo y lista para evaluar.
