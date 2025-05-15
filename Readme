@@ -33,7 +33,7 @@ $ docker compose up --build
      • persona-service         puerto 8081
      • cuenta-service          puerto 8082
 
-1) Importa el archivo `Postman-Banking.json` (collección incluida).
+1) Importa el archivo `Devsu.postman_collection.json` (collección incluida).
 2) Ejecuta estos requests en orden:
 
    1. POST  http://localhost:8081/api/clientes      (crea un cliente)
@@ -46,10 +46,3 @@ $ docker compose up --build
      en la cola **cliente-creado** (míralo en la UI de RabbitMQ).
 
 
-5.  OBTENER EL SCRIPT DEL ESQUEMA SQL
-
-$ docker exec -t pruebadevsu-postgres-1 \
-      pg_dump -U user -s banking > BaseDatos.sql
-
-   ► El flag `-s` (schema-only) genera solo CREATE TABLE, PK, FK, etc.
-   ► El archivo `BaseDatos.sql` queda en tu carpeta actual.
